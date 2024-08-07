@@ -1,6 +1,15 @@
+import { GetProductUseCase } from "@/@core/application/product/get-product.use-case";
+import { Registry, container } from "@/@core/infra/container-registry";
 import Image from "next/image";
+import { ListProductsUseCase } from "../@core/application/product/list-products.use-case";
 
-export default function Home() {
+export default async function Home() {
+  const useCase = container.get<ListProductsUseCase>(Registry.ListProductsUseCase)
+  const products = await useCase.execute()
+  const useCase2 = container.get<GetProductUseCase>(Registry.GetProductUseCase)
+  const product = await useCase2.execute(1)
+  
+
   return (
     <main className="flex min-h-screen flex-col items-center justify-between p-24">
       <div className="z-10 max-w-5xl w-full items-center justify-between font-mono text-sm lg:flex">
