@@ -14,26 +14,19 @@ yarn test
 
 ## Architecture
 
-```mermaid
-flowchart TD
-    UI["UI<br/><i>pages, components, cart provider</i>"]
-    UC["Application<br/><i>use cases</i>"]
-    DOM["Domain<br/><i>Product, LineItem, Cart, Order</i>"]
-    PORTS["Ports<br/><i>ProductGateway, CartGateway, OrderGateway</i>"]
-    ADAPTERS["Adapters<br/><i>axios · localStorage · in-memory fakes</i>"]
-    API["Route handlers<br/><i>/api over db.json</i>"]
-
-    UI --> UC --> DOM
-    UC --> PORTS
-    PORTS -.implemented by.-> ADAPTERS
-    ADAPTERS --> API
-    DOM -.-> PORTS
-```
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/architecture-dark.png">
+  <img alt="Architecture diagram: the UI and the use cases depend inward on domain entities and ports, while the HTTP and storage adapters outside the core implement those ports and call the Next.js route handlers." src="docs/architecture.png">
+</picture>
 
 Dependencies only ever point inward. `domain` imports nothing, `application` imports only
-`domain`, and `infra` exists to satisfy interfaces the domain declared. The arrow from the
-adapters back to the ports is the dependency inversion that makes the core testable: swapping
-axios for an in-memory fake is a constructor argument, not a refactor.
+`domain`, and `infra` exists to satisfy interfaces the domain declared. The one arrow pointing
+back out — adapters implementing the ports — is the dependency inversion that makes the core
+testable: swapping axios for an in-memory fake is a constructor argument, not a refactor.
+
+The route handlers sit outside `@core` on purpose. They live in this repository, but the core
+only ever reaches them through a gateway, so from the inside they are indistinguishable from a
+remote service.
 
 ```
 src/@core/                        the part that would survive dropping Next.js
