@@ -1,9 +1,12 @@
 "use client";
+
 import { AddProductInCartUseCase } from "@/@core/application/cart/add-product-in-cart.use-case";
 import { ClearCartUseCase } from "@/@core/application/cart/clear-cart.use-case";
 import { GetCartUseCase } from "@/@core/application/cart/get-cart.use-case";
 import { RemoveProductFromCartUseCase } from "@/@core/application/cart/remove-product-from-cart.use-case";
+import { CheckoutUseCase } from "@/@core/application/order/checkout.use-case";
 import { Cart } from "@/@core/domain/entities/cart";
+import { Order } from "@/@core/domain/entities/order";
 import { Product } from "@/@core/domain/entities/product";
 import { Registry, container } from "@/@core/infra/container-registry";
 import { PropsWithChildren, createContext, useContext, useEffect, useMemo, useState } from "react";
@@ -13,75 +16,50 @@ type CartContextValue = {
   addProduct: (product: Product) => void;
   removeProduct: (productId: number) => void;
   clear: () => void;
-}
+  checkout: (creditCardNumber: string) => Promise<Order>;
+};
 
-const defaultValue: CartContextValue = {
-  cart: new Cart({
-    products: [],
-  }),
-  addProduct: (_product: Product) => { },
-  removeProduct: (_productId: number) => { },
-  clear: () => { },
-}
+const CartContext = createContext<CartContextValue | null>(null);
 
-export const CartContext = createContext<CartContextValue>(defaultValue);
-
-const getCartUseCase = container.get<GetCartUseCase>(
-  Registry.GetCartUseCase
-)
-const addProductUseCase = container.get<AddProductInCartUseCase>(
-  Registry.AddProductInCartUseCase
-)
+const getCartUseCase = container.get<GetCartUseCase>(Registry.GetCartUseCase);
+const addProductUseCase = container.get<AddProductInCartUseCase>(Registry.AddProductInCartUseCase);
 const removeProductUseCase = container.get<RemoveProductFromCartUseCase>(
   Registry.RemoveProductFromCartUseCase
-)
-const clearCartUseCase = container.get<ClearCartUseCase>(
-  Registry.ClearCartUseCase
-)
+);
+const clearCartUseCase = container.get<ClearCartUseCase>(Registry.ClearCartUseCase);
+const checkoutUseCase = container.get<CheckoutUseCase>(Registry.CheckoutUseCase);
 
 export const CartProvider = ({ children }: PropsWithChildren) => {
-  const [cart, setCart] = useState(defaultValue.cart);
+  const [cart, setCart] = useState(new Cart({ products: [] }));
 
   useEffect(() => {
-    const firstLoad = async () => {
-      const cart = getCartUseCase.execute()
-      setCart(cart)
-    }
-    firstLoad()
+    setCart(getCartUseCase.execute());
   }, []);
 
-  const value  = useMemo(() => {
-    const addProduct = (product: Product) => {
-      const cart = addProductUseCase.execute(product)
-      setCart(cart);
-    }
-
-    const removeProduct = (productId: number) => {
-      const cart = removeProductUseCase.execute(productId)
-      setCart(cart);
-    }
-
-    const clear = () => {
-      const cart = clearCartUseCase.execute()
-      setCart(cart);
-    }
-
-    return {
+  const value = useMemo<CartContextValue>(
+    () => ({
       cart,
-      addProduct,
-      removeProduct,
-      clear,
-    }
-  }, [cart]);
-  
-  return (
-    <CartContext.Provider value={value}>
-      {children}
-    </CartContext.Provider>
-  )
-}
+      addProduct: (product: Product) => setCart(addProductUseCase.execute(product)),
+      removeProduct: (productId: number) => setCart(removeProductUseCase.execute(productId)),
+      clear: () => setCart(clearCartUseCase.execute()),
+      checkout: async (creditCardNumber: string) => {
+        const order = await checkoutUseCase.execute({ credit_card_number: creditCardNumber });
+        setCart(getCartUseCase.execute());
+        return order;
+      },
+    }),
+    [cart]
+  );
+
+  return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
+};
 
 export const useCart = () => {
   const context = useContext(CartContext);
-  return context
-}
+
+  if (!context) {
+    throw new Error("useCart must be used inside a CartProvider");
+  }
+
+  return context;
+};

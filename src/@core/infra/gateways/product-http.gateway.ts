@@ -1,21 +1,20 @@
-import { AxiosInstance } from "axios"
-import { Product } from "../../domain/entities/product"
-import { ProductGateway } from "../../domain/gateways/product.gateway"
+import { AxiosInstance } from "axios";
+import { Product, ProductProps } from "../../domain/entities/product";
+import { ProductGateway } from "../../domain/gateways/product.gateway";
 
 export class ProductHttpGateway implements ProductGateway {
-  constructor(private http: AxiosInstance) {}
+  constructor(private readonly http: AxiosInstance) {}
 
   async findAll(): Promise<Product[]> {
-    return this.http.get<Product[]>('/products')
-      .then(res => res.data)
-      .then(data => data.map((product) => new Product({
-        id: product.id,
-        name: product.name,
-        description: product.description,
-        price: product.price,
-      })))
+    const { data } = await this.http.get<ProductProps[]>("/products");
+    return data.map(toProduct);
   }
+
   async findById(id: number): Promise<Product> {
-    return this.http.get<Product>(`/products/${id}`).then(res => res.data)
+    const { data } = await this.http.get<ProductProps>(`/products/${id}`);
+    return toProduct(data);
   }
 }
+
+const toProduct = ({ id, name, description, price }: ProductProps) =>
+  new Product({ id, name, description, price });

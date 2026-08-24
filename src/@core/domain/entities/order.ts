@@ -7,7 +7,14 @@ export type OrderProps = {
 };
 
 export class Order {
-  constructor(public props: OrderProps) {}
+  constructor(public props: OrderProps) {
+    if (props.products.length === 0) {
+      throw new Error("Order must have at least one product");
+    }
+    if (!props.credit_card_number?.trim()) {
+      throw new Error("Order must have a credit card number");
+    }
+  }
 
   get id() {
     return this.props.id;
@@ -22,9 +29,6 @@ export class Order {
   }
 
   get total() {
-    return this.props.products.reduce(
-      (total, product) => total + product.price,
-      0
-    );
+    return this.props.products.reduce((total, product) => total + product.price, 0);
   }
 }

@@ -1,10 +1,10 @@
-import { Product } from "../../domain/entities/product";
-import { ProductGateway } from "../../domain/gateways/product.gateway";
+import { Product } from "@/@core/domain/entities/product";
+import { ProductGateway } from "@/@core/domain/gateways/product.gateway";
 
 export class ListProductsUseCase {
-  constructor(private productGateway: ProductGateway) {}
-  
-  async execute(): Promise<Product[]> {
+  constructor(private readonly productGateway: ProductGateway) {}
+
+  execute(): Promise<Product[]> {
     return this.productGateway.findAll();
   }
 }

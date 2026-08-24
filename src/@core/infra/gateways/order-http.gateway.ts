@@ -1,34 +1,43 @@
 import { AxiosInstance } from "axios";
 import { Order } from "../../domain/entities/order";
-import { Product } from "../../domain/entities/product";
+import { Product, ProductProps } from "../../domain/entities/product";
 import { OrderGateway } from "../../domain/gateways/order.gateway";
+
+type OrderPayload = {
+  id?: number;
+  products: ProductProps[];
+  credit_card_number: string;
+};
 
 export class OrderHttpGateway implements OrderGateway {
   constructor(private readonly http: AxiosInstance) {}
 
   async insert(order: Order): Promise<Order> {
-    return this.http.post("/orders", order).then((response) => {
-      order.props.id = response.data.id;
-      return order;
-    });
+    const { data } = await this.http.post<OrderPayload>("/orders", toPayload(order));
+    return toOrder(data);
   }
 
   async findById(id: number): Promise<Order> {
-    return this.http.get(`/orders/${id}`).then(
-      (response) =>
-        new Order({
-          id: response.data.id,
-          products: response.data.products.map(
-            (product: any) =>
-              new Product({
-                id: product.id,
-                name: product.name,
-                description: product.description,
-                price: product.price,
-              })
-          ),
-          credit_card_number: response.data.credit_card_number,
-        })
-    );
+    const { data } = await this.http.get<OrderPayload>(`/orders/${id}`);
+    return toOrder(data);
   }
 }
+
+const toPayload = (order: Order): OrderPayload => ({
+  products: order.products.map(({ id, name, description, price }) => ({
+    id,
+    name,
+    description,
+    price,
+  })),
+  credit_card_number: order.credit_card_number,
+});
+
+const toOrder = (payload: OrderPayload) =>
+  new Order({
+    id: payload.id,
+    products: payload.products.map(
+      ({ id, name, description, price }) => new Product({ id, name, description, price })
+    ),
+    credit_card_number: payload.credit_card_number,
+  });

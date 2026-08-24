@@ -1,36 +1,50 @@
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# Ecommerce Clean Architecture
 
-## Getting Started
+Study project applying Clean Architecture and SOLID on top of Next.js (App Router).
 
-First, run the development server:
+## Layers
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+```
+src/@core/                      framework-agnostic core
+  domain/entities/              Product, Cart, Order (business rules and invariants)
+  domain/gateways/              ports: ProductGateway, CartGateway, OrderGateway
+  application/                  use cases, depend only on the ports above
+  infra/gateways/               adapters: HTTP (axios) and localStorage
+  infra/container-registry.ts   inversify wiring (composition root)
+
+src/server/db.ts                dev datastore backed by db.json
+src/app/api/                    route handlers (the backend the HTTP gateways talk to)
+src/app/                        pages and client components
+src/contexts/cart.provider.tsx  React state on top of the cart use cases
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+The dependency rule is enforced by imports: `domain` imports nothing, `application` imports
+only `domain`, `infra` implements `domain` ports, and the UI only knows use cases.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Scripts
 
-This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-optimization) to automatically optimize and load Inter, a custom Google Font.
+```bash
+yarn dev          # http://localhost:3000
+yarn build        # production build
+yarn start        # production server
+yarn test         # unit + integration tests (vitest)
+yarn typecheck    # tsc --noEmit
+yarn lint
+```
 
-## Learn More
+Set `NEXT_PUBLIC_API_URL` to point the gateways at a different API. Server-side rendering
+needs an absolute URL, so the default is `http://localhost:$PORT/api`.
 
-To learn more about Next.js, take a look at the following resources:
+## Tests
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- **Unit** — entities and use cases against in-memory fakes (`test/fakes.ts`), and gateways
+  against a stubbed axios instance.
+- **Integration** — `test/`: the container resolving the whole graph, the cart round-tripping
+  through `localStorage`, the route handlers against a temp `db.json`, and a checkout flow
+  that crosses every layer using an axios adapter that calls the route handlers in-process
+  (`test/api-adapter.ts`), so no server is needed.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
+## Notes
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+- `db.json` is a development datastore, rewritten on every order; it is not concurrency safe.
+- Orders never store the full card number — the API masks it down to the last four digits.
