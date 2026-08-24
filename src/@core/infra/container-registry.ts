@@ -44,30 +44,42 @@ container.bind(Registry.AxiosAdapter).toConstantValue(http);
 /* GATEWAYS */
 container
   .bind(Registry.ProductGateway)
-  .toDynamicValue((ctx) => new ProductHttpGateway(ctx.container.get<AxiosInstance>(Registry.AxiosAdapter)));
+  .toDynamicValue(
+    (ctx) => new ProductHttpGateway(ctx.container.get<AxiosInstance>(Registry.AxiosAdapter))
+  );
 
 container
   .bind(Registry.OrderGateway)
-  .toDynamicValue((ctx) => new OrderHttpGateway(ctx.container.get<AxiosInstance>(Registry.AxiosAdapter)));
+  .toDynamicValue(
+    (ctx) => new OrderHttpGateway(ctx.container.get<AxiosInstance>(Registry.AxiosAdapter))
+  );
 
 container.bind(Registry.CartGateway).toDynamicValue(() => new CartLocalStorageGateway());
 
 /* USE CASES */
 container
   .bind(Registry.ListProductsUseCase)
-  .toDynamicValue((ctx) => new ListProductsUseCase(ctx.container.get<ProductGateway>(Registry.ProductGateway)));
+  .toDynamicValue(
+    (ctx) => new ListProductsUseCase(ctx.container.get<ProductGateway>(Registry.ProductGateway))
+  );
 
 container
   .bind(Registry.GetProductUseCase)
-  .toDynamicValue((ctx) => new GetProductUseCase(ctx.container.get<ProductGateway>(Registry.ProductGateway)));
+  .toDynamicValue(
+    (ctx) => new GetProductUseCase(ctx.container.get<ProductGateway>(Registry.ProductGateway))
+  );
 
 container
   .bind(Registry.GetCartUseCase)
-  .toDynamicValue((ctx) => new GetCartUseCase(ctx.container.get<CartGateway>(Registry.CartGateway)));
+  .toDynamicValue(
+    (ctx) => new GetCartUseCase(ctx.container.get<CartGateway>(Registry.CartGateway))
+  );
 
 container
   .bind(Registry.AddProductInCartUseCase)
-  .toDynamicValue((ctx) => new AddProductInCartUseCase(ctx.container.get<CartGateway>(Registry.CartGateway)));
+  .toDynamicValue(
+    (ctx) => new AddProductInCartUseCase(ctx.container.get<CartGateway>(Registry.CartGateway))
+  );
 
 container
   .bind(Registry.RemoveProductFromCartUseCase)
@@ -77,7 +89,9 @@ container
 
 container
   .bind(Registry.ClearCartUseCase)
-  .toDynamicValue((ctx) => new ClearCartUseCase(ctx.container.get<CartGateway>(Registry.CartGateway)));
+  .toDynamicValue(
+    (ctx) => new ClearCartUseCase(ctx.container.get<CartGateway>(Registry.CartGateway))
+  );
 
 container
   .bind(Registry.CheckoutUseCase)
@@ -91,4 +105,6 @@ container
 
 container
   .bind(Registry.GetOrderUseCase)
-  .toDynamicValue((ctx) => new GetOrderUseCase(ctx.container.get<OrderGateway>(Registry.OrderGateway)));
+  .toDynamicValue(
+    (ctx) => new GetOrderUseCase(ctx.container.get<OrderGateway>(Registry.OrderGateway))
+  );

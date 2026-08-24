@@ -8,31 +8,41 @@ import { RemoveProductFromCartUseCase } from "./remove-product-from-cart.use-cas
 
 describe("cart use cases", () => {
   let gateway: InMemoryCartGateway;
+  let storedCart: () => ReturnType<GetCartUseCase["execute"]>;
 
   beforeEach(() => {
     gateway = new InMemoryCartGateway();
+    storedCart = () => new GetCartUseCase(gateway).execute();
   });
 
   it("returns an empty cart when nothing was stored", () => {
-    expect(new GetCartUseCase(gateway).execute().products).toEqual([]);
+    expect(storedCart().isEmpty).toBe(true);
   });
 
   it("persists the product added to the cart", () => {
     const cart = new AddProductInCartUseCase(gateway).execute(buildProduct({ id: 3 }));
 
-    expect(cart.products.map((product) => product.id)).toEqual([3]);
-    expect(new GetCartUseCase(gateway).execute().products.map((p) => p.id)).toEqual([3]);
+    expect(cart.items.map((item) => item.product.id)).toEqual([3]);
+    expect(storedCart().items.map((item) => item.product.id)).toEqual([3]);
   });
 
-  it("persists the removal of a product", () => {
+  it("persists the raised quantity of a repeated product", () => {
+    const addProduct = new AddProductInCartUseCase(gateway);
+    addProduct.execute(buildProduct({ id: 1 }));
+    addProduct.execute(buildProduct({ id: 1 }));
+
+    expect(storedCart().items[0].quantity).toBe(2);
+  });
+
+  it("persists the removal of a unit", () => {
     const addProduct = new AddProductInCartUseCase(gateway);
     addProduct.execute(buildProduct({ id: 1 }));
     addProduct.execute(buildProduct({ id: 2 }));
 
     const cart = new RemoveProductFromCartUseCase(gateway).execute(1);
 
-    expect(cart.products.map((product) => product.id)).toEqual([2]);
-    expect(new GetCartUseCase(gateway).execute().products.map((p) => p.id)).toEqual([2]);
+    expect(cart.items.map((item) => item.product.id)).toEqual([2]);
+    expect(storedCart().items.map((item) => item.product.id)).toEqual([2]);
   });
 
   it("persists the cleared cart", () => {
@@ -40,7 +50,7 @@ describe("cart use cases", () => {
 
     const cart = new ClearCartUseCase(gateway).execute();
 
-    expect(cart.products).toEqual([]);
-    expect(new GetCartUseCase(gateway).execute().products).toEqual([]);
+    expect(cart.isEmpty).toBe(true);
+    expect(storedCart().isEmpty).toBe(true);
   });
 });

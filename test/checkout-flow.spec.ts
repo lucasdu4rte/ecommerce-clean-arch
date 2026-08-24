@@ -1,8 +1,8 @@
 import { AddProductInCartUseCase } from "@/@core/application/cart/add-product-in-cart.use-case";
 import { GetCartUseCase } from "@/@core/application/cart/get-cart.use-case";
-import { ListProductsUseCase } from "@/@core/application/product/list-products.use-case";
 import { CheckoutUseCase } from "@/@core/application/order/checkout.use-case";
 import { GetOrderUseCase } from "@/@core/application/order/get-order.use-case";
+import { ListProductsUseCase } from "@/@core/application/product/list-products.use-case";
 import { CartLocalStorageGateway } from "@/@core/infra/gateways/cart-local-storage.gateway";
 import { OrderHttpGateway } from "@/@core/infra/gateways/order-http.gateway";
 import { ProductHttpGateway } from "@/@core/infra/gateways/product-http.gateway";
@@ -35,26 +35,39 @@ afterEach(() => database.cleanup());
 describe("checkout flow across every layer", () => {
   it("turns the listed products into a persisted order and empties the cart", async () => {
     const products = await new ListProductsUseCase(productGateway).execute();
-
     const addProduct = new AddProductInCartUseCase(cartGateway);
-    products.forEach((product) => addProduct.execute(product));
 
-    expect(new GetCartUseCase(cartGateway).execute().total).toBe(1248);
+    products.forEach((product) => addProduct.execute(product));
+    addProduct.execute(products[0]);
+
+    expect(new GetCartUseCase(cartGateway).execute().total).toBe(2247);
 
     const order = await new CheckoutUseCase(cartGateway, orderGateway).execute({
       credit_card_number: "4111111111111111",
     });
 
     expect(order.id).toBe(1);
-    expect(order.total).toBe(1248);
+    expect(order.total).toBe(2247);
     expect(order.credit_card_number).toBe("**** **** **** 1111");
-    expect(new GetCartUseCase(cartGateway).execute().products).toEqual([]);
+    expect(new GetCartUseCase(cartGateway).execute().isEmpty).toBe(true);
 
     const persisted = await new GetOrderUseCase(orderGateway).execute(order.id!);
-    expect(persisted.products.map((product) => product.name)).toEqual([
-      "iPhone 12 Pro",
-      "AirPods Pro",
+    expect(persisted.items.map((item) => [item.product.name, item.quantity])).toEqual([
+      ["iPhone 12 Pro", 2],
+      ["AirPods Pro", 1],
     ]);
+  });
+
+  it("surfaces the reason the API refused the checkout", async () => {
+    new AddProductInCartUseCase(cartGateway).execute(
+      (await new ListProductsUseCase(productGateway).execute())[0]
+    );
+
+    await expect(
+      new CheckoutUseCase(cartGateway, orderGateway).execute({ credit_card_number: "123" })
+    ).rejects.toThrow("credit_card_number must contain 13 to 19 digits");
+    await expect(database.read()).resolves.toMatchObject({ orders: [] });
+    expect(new GetCartUseCase(cartGateway).execute().isEmpty).toBe(false);
   });
 
   it("does not create an order when the cart is empty", async () => {

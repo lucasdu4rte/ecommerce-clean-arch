@@ -2,7 +2,7 @@
 
 import { useCart } from "@/contexts/cart.provider";
 import { useRouter } from "next/navigation";
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { formatPrice } from "./format";
 
 export const CartPanel = () => {
@@ -12,6 +12,8 @@ export const CartPanel = () => {
   const [submitting, setSubmitting] = useState(false);
   const router = useRouter();
 
+  useEffect(() => setError(null), [cart]);
+
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
     setError(null);
@@ -20,9 +22,8 @@ export const CartPanel = () => {
     try {
       const order = await checkout(creditCardNumber);
       router.push(`/orders/${order.id}`);
-    } catch {
-      setError("Checkout failed. Check the cart and the credit card number.");
-    } finally {
+    } catch (failure) {
+      setError(failure instanceof Error ? failure.message : "Checkout failed.");
       setSubmitting(false);
     }
   };
@@ -31,19 +32,23 @@ export const CartPanel = () => {
     <aside className="h-fit rounded border border-border p-4">
       <h2 className="mb-4 text-xl font-bold">Cart</h2>
 
-      {cart.products.length === 0 ? (
+      {cart.isEmpty ? (
         <p className="text-sm text-muted">Your cart is empty.</p>
       ) : (
         <ul className="mb-4 space-y-2">
-          {cart.products.map((product, index) => (
-            <li key={`${product.id}-${index}`} className="flex justify-between gap-2 text-sm">
-              <span>{product.name}</span>
+          {cart.items.map((item) => (
+            <li key={item.product.id} className="flex items-baseline justify-between gap-2 text-sm">
+              <span>
+                {item.product.name}
+                {item.quantity > 1 && <span className="text-muted"> &times;{item.quantity}</span>}
+              </span>
               <button
                 type="button"
-                className="text-muted hover:text-foreground"
-                onClick={() => removeProduct(product.id)}
+                className="shrink-0 text-muted hover:text-foreground"
+                aria-label={`Remove one ${item.product.name}`}
+                onClick={() => removeProduct(item.product.id)}
               >
-                {formatPrice(product.price)} &times;
+                {formatPrice(item.total)} &minus;
               </button>
             </li>
           ))}
@@ -62,7 +67,7 @@ export const CartPanel = () => {
         />
         <button
           type="submit"
-          disabled={submitting || cart.products.length === 0}
+          disabled={submitting || cart.isEmpty}
           className="w-full rounded bg-foreground px-3 py-2 text-sm font-medium text-background hover:opacity-80 disabled:cursor-not-allowed disabled:bg-border disabled:text-muted"
         >
           {submitting ? "Processing..." : "Checkout"}
@@ -71,8 +76,12 @@ export const CartPanel = () => {
 
       {error && <p className="mt-2 text-sm text-danger">{error}</p>}
 
-      {cart.products.length > 0 && (
-        <button type="button" className="mt-2 text-sm text-muted underline hover:text-foreground" onClick={clear}>
+      {!cart.isEmpty && (
+        <button
+          type="button"
+          className="mt-2 text-sm text-muted underline hover:text-foreground"
+          onClick={clear}
+        >
           Clear cart
         </button>
       )}

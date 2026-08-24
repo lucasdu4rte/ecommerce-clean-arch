@@ -2,7 +2,7 @@ import { AddProductInCartUseCase } from "@/@core/application/cart/add-product-in
 import { ClearCartUseCase } from "@/@core/application/cart/clear-cart.use-case";
 import { GetCartUseCase } from "@/@core/application/cart/get-cart.use-case";
 import { RemoveProductFromCartUseCase } from "@/@core/application/cart/remove-product-from-cart.use-case";
-import { Product } from "@/@core/domain/entities/product";
+import { LineItem } from "@/@core/domain/entities/line-item";
 import { Registry, container } from "@/@core/infra/container-registry";
 import { buildProduct } from "@test/builders";
 import { describe, expect, it } from "vitest";
@@ -22,31 +22,39 @@ describe("cart flow through the container and localStorage", () => {
 
   it("survives a full add, remove and clear round trip", () => {
     addProduct().execute(buildProduct({ id: 1, price: 999 }));
+    addProduct().execute(buildProduct({ id: 1, price: 999 }));
     addProduct().execute(buildProduct({ id: 2, name: "AirPods Pro", price: 249 }));
 
-    expect(getCart().execute().total).toBe(1248);
+    expect(getCart().execute().total).toBe(2247);
 
     removeProduct().execute(1);
-    expect(getCart().execute().products.map((product) => product.id)).toEqual([2]);
+    expect(getCart().execute().items[0].quantity).toBe(1);
 
     clearCart().execute();
-    expect(getCart().execute().products).toEqual([]);
+    expect(getCart().execute().isEmpty).toBe(true);
   });
 
   it("rebuilds entities from the stored payload", () => {
     addProduct().execute(buildProduct({ id: 5 }));
+    addProduct().execute(buildProduct({ id: 5 }));
 
-    const [product] = getCart().execute().products;
-
-    expect(product).toBeInstanceOf(Product);
+    expect(getCart().execute().items[0]).toBeInstanceOf(LineItem);
     expect(JSON.parse(localStorage.getItem("cart") ?? "[]")).toEqual([
-      { id: 5, name: "iPhone 12 Pro", description: "Apple iPhone 12th generation", price: 999 },
+      {
+        product: {
+          id: 5,
+          name: "iPhone 12 Pro",
+          description: "Apple iPhone 12th generation",
+          price: 999,
+        },
+        quantity: 2,
+      },
     ]);
   });
 
   it("falls back to an empty cart when the stored payload is corrupt", () => {
     localStorage.setItem("cart", "not-json");
 
-    expect(getCart().execute().products).toEqual([]);
+    expect(getCart().execute().isEmpty).toBe(true);
   });
 });

@@ -6,12 +6,17 @@ export type ProductRow = {
   name: string;
   description: string;
   price: number;
-  [key: string]: unknown;
+  [extra: string]: unknown;
+};
+
+export type LineItemRow = {
+  product: ProductRow;
+  quantity: number;
 };
 
 export type OrderRow = {
   id: number;
-  products: ProductRow[];
+  items: LineItemRow[];
   credit_card_number: string;
 };
 
@@ -20,16 +25,18 @@ export type Database = {
   orders: OrderRow[];
 };
 
+/** Overridable so tests can run against a throwaway file instead of the repository's. */
 const dbFile = () => process.env.DB_FILE ?? path.join(process.cwd(), "db.json");
 
 export async function readDatabase(): Promise<Database> {
   const raw = await fs.readFile(dbFile(), "utf-8");
   const { products = [], orders = [] } = JSON.parse(raw) as Partial<Database>;
+
   return { products, orders };
 }
 
-// ponytail: read-modify-write without locking; fine for a single-process dev store,
-// swap for a real database if concurrent writes ever matter.
+// ponytail: read-modify-write with no locking, which is all a single-process dev store needs.
+// Swap this module for a real database before concurrent writes matter.
 export async function writeDatabase(database: Database): Promise<void> {
   await fs.writeFile(dbFile(), `${JSON.stringify(database, null, 2)}\n`, "utf-8");
 }

@@ -1,14 +1,15 @@
-import { Product } from "./product";
+import { LineItem } from "./line-item";
 
 export type OrderProps = {
   id?: number;
-  products: Product[];
+  items: LineItem[];
   credit_card_number: string;
 };
 
+/** A checked out cart. Its invariants are what the payment provider would refuse to charge. */
 export class Order {
-  constructor(public props: OrderProps) {
-    if (props.products.length === 0) {
+  constructor(public readonly props: OrderProps) {
+    if (props.items.length === 0) {
       throw new Error("Order must have at least one product");
     }
     if (!props.credit_card_number?.trim()) {
@@ -20,8 +21,8 @@ export class Order {
     return this.props.id;
   }
 
-  get products() {
-    return this.props.products;
+  get items(): readonly LineItem[] {
+    return this.props.items;
   }
 
   get credit_card_number() {
@@ -29,6 +30,6 @@ export class Order {
   }
 
   get total() {
-    return this.props.products.reduce((total, product) => total + product.price, 0);
+    return this.props.items.reduce((total, item) => total + item.total, 0);
   }
 }

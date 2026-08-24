@@ -4,6 +4,8 @@ import { createTempDatabase } from "@test/temp-db";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 const product = { id: 1, name: "iPhone 12 Pro", description: "Apple", price: 999 };
+const item = { product, quantity: 2 };
+const CREDIT_CARD = "4111111111111111";
 
 const postOrder = (body: unknown) =>
   createOrder(
@@ -24,44 +26,45 @@ afterEach(() => database.cleanup());
 
 describe("POST /api/orders", () => {
   it("persists the order with a generated id", async () => {
-    const response = await postOrder({
-      products: [product],
-      credit_card_number: "4111111111111111",
-    });
+    const response = await postOrder({ items: [item], credit_card_number: CREDIT_CARD });
 
     expect(response.status).toBe(201);
-    await expect(response.json()).resolves.toMatchObject({ id: 1 });
+    await expect(response.json()).resolves.toMatchObject({ id: 1, items: [item] });
     await expect(database.read()).resolves.toMatchObject({ orders: [{ id: 1 }] });
   });
 
   it("never stores the full credit card number", async () => {
-    const response = await postOrder({
-      products: [product],
-      credit_card_number: "4111111111111111",
+    const response = await postOrder({ items: [item], credit_card_number: CREDIT_CARD });
+
+    await expect(response.json()).resolves.toMatchObject({
+      credit_card_number: "**** **** **** 1111",
     });
-
-    const order = await response.json();
-
-    expect(order.credit_card_number).toBe("**** **** **** 1111");
-    const stored = await database.read();
-    expect(JSON.stringify(stored)).not.toContain("4111111111111111");
+    expect(JSON.stringify(await database.read())).not.toContain(CREDIT_CARD);
   });
 
   it("increments the id across orders", async () => {
-    await postOrder({ products: [product], credit_card_number: "4111111111111111" });
-    const response = await postOrder({
-      products: [product],
-      credit_card_number: "4111111111111111",
-    });
+    await postOrder({ items: [item], credit_card_number: CREDIT_CARD });
+    const response = await postOrder({ items: [item], credit_card_number: CREDIT_CARD });
 
     await expect(response.json()).resolves.toMatchObject({ id: 2 });
   });
 
   it.each([
-    ["without products", { products: [], credit_card_number: "4111111111111111" }],
-    ["with a malformed product", { products: [{ id: "1" }], credit_card_number: "4111111111111111" }],
-    ["with a short credit card", { products: [product], credit_card_number: "411" }],
-    ["with a non numeric credit card", { products: [product], credit_card_number: "not-a-card" }],
+    ["without items", { items: [], credit_card_number: CREDIT_CARD }],
+    [
+      "with a malformed product",
+      { items: [{ product: { id: "1" }, quantity: 1 }], credit_card_number: CREDIT_CARD },
+    ],
+    [
+      "with a zero quantity",
+      { items: [{ product, quantity: 0 }], credit_card_number: CREDIT_CARD },
+    ],
+    [
+      "with a fractional quantity",
+      { items: [{ product, quantity: 1.5 }], credit_card_number: CREDIT_CARD },
+    ],
+    ["with a short credit card", { items: [item], credit_card_number: "411" }],
+    ["with a non numeric credit card", { items: [item], credit_card_number: "not-a-card" }],
     ["without a body", null],
   ])("rejects an order %s", async (_label, body) => {
     const response = await postOrder(body);
@@ -73,12 +76,12 @@ describe("POST /api/orders", () => {
 
 describe("GET /api/orders/[id]", () => {
   it("returns a persisted order", async () => {
-    await postOrder({ products: [product], credit_card_number: "4111111111111111" });
+    await postOrder({ items: [item], credit_card_number: CREDIT_CARD });
 
     const response = await getOrder(new Request("http://test/orders/1"), { params: { id: "1" } });
 
     expect(response.status).toBe(200);
-    await expect(response.json()).resolves.toMatchObject({ id: 1, products: [product] });
+    await expect(response.json()).resolves.toMatchObject({ id: 1, items: [item] });
   });
 
   it("returns 404 for an unknown order", async () => {

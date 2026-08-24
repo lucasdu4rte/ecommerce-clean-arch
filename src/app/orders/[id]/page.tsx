@@ -20,10 +20,16 @@ export default async function OrderPage({ params }: { params: { id: string } }) 
       <p className="text-sm text-muted">Paid with {order.credit_card_number}</p>
 
       <ul className="space-y-2">
-        {order.products.map((product, index) => (
-          <li key={`${product.id}-${index}`} className="flex justify-between rounded border border-border p-3">
-            <span>{product.name}</span>
-            <span>{formatPrice(product.price)}</span>
+        {order.items.map((item) => (
+          <li
+            key={item.product.id}
+            className="flex justify-between rounded border border-border p-3"
+          >
+            <span>
+              {item.product.name}
+              {item.quantity > 1 && <span className="text-muted"> &times;{item.quantity}</span>}
+            </span>
+            <span>{formatPrice(item.total)}</span>
           </li>
         ))}
       </ul>

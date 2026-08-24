@@ -7,6 +7,6 @@ export class ClearCartUseCase {
     const cart = this.cartGateway.get();
     cart.clear();
     this.cartGateway.save(cart);
-    return cart
+    return cart;
   }
 }

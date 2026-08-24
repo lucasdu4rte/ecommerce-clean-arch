@@ -1,6 +1,7 @@
 import { AxiosInstance } from "axios";
 import { Product, ProductProps } from "../../domain/entities/product";
 import { ProductGateway } from "../../domain/gateways/product.gateway";
+import { toProduct } from "../mappers";
 
 export class ProductHttpGateway implements ProductGateway {
   constructor(private readonly http: AxiosInstance) {}
@@ -15,6 +16,3 @@ export class ProductHttpGateway implements ProductGateway {
     return toProduct(data);
   }
 }
-
-const toProduct = ({ id, name, description, price }: ProductProps) =>
-  new Product({ id, name, description, price });

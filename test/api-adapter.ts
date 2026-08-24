@@ -4,7 +4,7 @@ import { GET as getProduct } from "@/app/api/products/[id]/route";
 import { GET as listProducts } from "@/app/api/products/route";
 import axios, { AxiosAdapter, AxiosResponse } from "axios";
 
-const json = (url: string, body: unknown) =>
+const asRequest = (url: string, body: unknown) =>
   new Request(`http://test${url}`, {
     method: "POST",
     body: body as string,
@@ -12,7 +12,7 @@ const json = (url: string, body: unknown) =>
   });
 
 async function dispatch(method: string, url: string, body: unknown): Promise<Response> {
-  if (method === "POST" && url === "/orders") return createOrder(json(url, body));
+  if (method === "POST" && url === "/orders") return createOrder(asRequest(url, body));
   if (url === "/products") return listProducts();
 
   const orderId = url.match(/^\/orders\/(\d+)$/)?.[1];
@@ -31,13 +31,22 @@ const adapter: AxiosAdapter = async (config) => {
     config.data
   );
 
-  return {
+  const result = {
     data: await response.json(),
     status: response.status,
     statusText: response.statusText,
     headers: {},
     config,
   } as AxiosResponse;
+
+  if (response.ok) return result;
+
+  // Mirrors what axios does for a failed status, so gateways see the errors they see in production.
+  throw Object.assign(new Error(`Request failed with status code ${response.status}`), {
+    isAxiosError: true,
+    config,
+    response: result,
+  });
 };
 
 /** Axios instance that calls the Next route handlers in-process, no server required. */

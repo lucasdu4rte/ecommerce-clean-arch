@@ -1,20 +1,28 @@
-import { OrderRow, ProductRow, nextId, readDatabase, writeDatabase } from "@/server/db";
+import { LineItemRow, OrderRow, nextId, readDatabase, writeDatabase } from "@/server/db";
 
 const CREDIT_CARD = /^\d{13,19}$/;
 
 type OrderRequest = {
-  products: ProductRow[];
+  items: LineItemRow[];
   credit_card_number: string;
 };
 
+/** The API trusts nothing the client sends: this is the boundary the domain sits behind. */
 function validate(body: unknown): string | null {
-  const { products, credit_card_number } = (body ?? {}) as Partial<OrderRequest>;
+  const { items, credit_card_number } = (body ?? {}) as Partial<OrderRequest>;
 
-  if (!Array.isArray(products) || products.length === 0) {
-    return "products must be a non-empty list";
+  if (!Array.isArray(items) || items.length === 0) {
+    return "items must be a non-empty list";
   }
-  if (products.some(({ id, price }) => typeof id !== "number" || typeof price !== "number")) {
-    return "every product must have a numeric id and price";
+  if (
+    items.some(
+      ({ product }) => typeof product?.id !== "number" || typeof product?.price !== "number"
+    )
+  ) {
+    return "every item must carry a product with a numeric id and price";
+  }
+  if (items.some(({ quantity }) => !Number.isInteger(quantity) || quantity < 1)) {
+    return "every item quantity must be a positive integer";
   }
   if (typeof credit_card_number !== "string" || !CREDIT_CARD.test(credit_card_number)) {
     return "credit_card_number must contain 13 to 19 digits";
@@ -22,6 +30,7 @@ function validate(body: unknown): string | null {
   return null;
 }
 
+/** Card numbers are never stored: only the last four digits survive the request. */
 const mask = (creditCardNumber: string) => `**** **** **** ${creditCardNumber.slice(-4)}`;
 
 export async function POST(request: Request) {
@@ -32,11 +41,11 @@ export async function POST(request: Request) {
     return Response.json({ message: error }, { status: 422 });
   }
 
-  const { products, credit_card_number } = body as OrderRequest;
+  const { items, credit_card_number } = body as OrderRequest;
   const database = await readDatabase();
   const order: OrderRow = {
     id: nextId(database.orders),
-    products,
+    items,
     credit_card_number: mask(credit_card_number),
   };
 

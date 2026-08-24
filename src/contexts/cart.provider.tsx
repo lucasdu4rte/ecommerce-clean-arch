@@ -30,7 +30,7 @@ const clearCartUseCase = container.get<ClearCartUseCase>(Registry.ClearCartUseCa
 const checkoutUseCase = container.get<CheckoutUseCase>(Registry.CheckoutUseCase);
 
 export const CartProvider = ({ children }: PropsWithChildren) => {
-  const [cart, setCart] = useState(new Cart({ products: [] }));
+  const [cart, setCart] = useState(new Cart({ items: [] }));
 
   useEffect(() => {
     setCart(getCartUseCase.execute());

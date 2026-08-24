@@ -3,15 +3,15 @@ export type ProductProps = {
   name: string;
   description: string;
   price: number;
-}
+};
 
 export class Product {
-  constructor(public props: ProductProps) { }
+  constructor(public readonly props: ProductProps) {}
 
   get id() {
     return this.props.id;
   }
-  
+
   get name() {
     return this.props.name;
   }

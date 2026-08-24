@@ -1,32 +1,32 @@
 import { Cart } from "@/@core/domain/entities/cart";
-import { Product, ProductProps } from "@/@core/domain/entities/product";
+import { LineItem } from "@/@core/domain/entities/line-item";
 import { CartGateway } from "@/@core/domain/gateways/cart.gateway";
+import { LineItemDto, toLineItem, toLineItemDto } from "../mappers";
 
 const CART_KEY = "cart";
 
 export class CartLocalStorageGateway implements CartGateway {
   get(): Cart {
     const stored = this.storage?.getItem(CART_KEY);
-    if (!stored) return new Cart({ products: [] });
 
-    return new Cart({ products: this.parse(stored) });
+    return new Cart({ items: stored ? this.parse(stored) : [] });
   }
 
   save(cart: Cart): void {
-    this.storage?.setItem(CART_KEY, JSON.stringify(cart.products.map((p) => p.props)));
+    this.storage?.setItem(CART_KEY, JSON.stringify(cart.items.map(toLineItemDto)));
   }
 
-  private parse(stored: string): Product[] {
+  /** Anything the browser hands back that is not a readable cart is treated as no cart. */
+  private parse(stored: string): LineItem[] {
     try {
-      const products: ProductProps[] = JSON.parse(stored);
-      return products.map(
-        ({ id, name, description, price }) => new Product({ id, name, description, price })
-      );
+      const items: LineItemDto[] = JSON.parse(stored);
+      return items.map(toLineItem);
     } catch {
       return [];
     }
   }
 
+  /** Undefined while rendering on the server, where there is no storage to read. */
   private get storage() {
     return typeof localStorage === "undefined" ? null : localStorage;
   }

@@ -1,19 +1,21 @@
 import { Cart } from "@/@core/domain/entities/cart";
+import { LineItem } from "@/@core/domain/entities/line-item";
 import { Order } from "@/@core/domain/entities/order";
 import { Product } from "@/@core/domain/entities/product";
 import { CartGateway } from "@/@core/domain/gateways/cart.gateway";
 import { OrderGateway } from "@/@core/domain/gateways/order.gateway";
 import { ProductGateway } from "@/@core/domain/gateways/product.gateway";
 
+/** Hands out a fresh `Cart` on every read, the way a serializing adapter would. */
 export class InMemoryCartGateway implements CartGateway {
-  constructor(private products: Product[] = []) {}
+  constructor(private items: LineItem[] = []) {}
 
   get(): Cart {
-    return new Cart({ products: [...this.products] });
+    return new Cart({ items: [...this.items] });
   }
 
   save(cart: Cart): void {
-    this.products = [...cart.products];
+    this.items = [...cart.items];
   }
 }
 
